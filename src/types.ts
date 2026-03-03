@@ -11,6 +11,7 @@ export interface Material {
   id: number;
   courseId: number;
   title: string;
+  category: 'Lecture Note' | 'Syllabus' | 'Assignment' | 'Other';
   fileType: 'pdf' | 'image';
   fileUrl: string;
   uploadedAt: string;

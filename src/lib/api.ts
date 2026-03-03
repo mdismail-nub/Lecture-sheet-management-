@@ -37,6 +37,14 @@ export const api = {
   },
   materials: {
     getAll: (): Promise<Material[]> => fetcher("/api/materials"),
+    upload: (file: File): Promise<{ fileUrl: string; fileType: 'pdf' | 'image' }> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return fetcher("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+    },
     create: (data: Partial<Material>) => fetcher("/api/materials", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

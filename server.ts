@@ -2,7 +2,9 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import cookieParser from "cookie-parser";
+import multer from "multer";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,6 +26,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     courseId INTEGER NOT NULL,
     title TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'Other', -- 'Lecture Note' | 'Syllabus' | 'Assignment' | 'Other'
     fileType TEXT NOT NULL, -- 'pdf' | 'image'
     fileUrl TEXT NOT NULL,
     uploadedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -63,12 +66,52 @@ if (courseCount.count === 0) {
   insertAnnouncement.run("New Lecture Materials", "New lecture slides for CSE 301 have been uploaded.");
 }
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Add category column if it doesn't exist (for existing databases)
+try {
+  db.prepare("ALTER TABLE materials ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'").run();
+} catch (e) {
+  // Column probably already exists
+}
+
+// Multer configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF and images are allowed.'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  }
+});
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
   app.use(cookieParser());
+  app.use("/uploads", express.static(uploadsDir));
 
   // Auth Middleware
   const authenticate = (req: any, res: any, next: any) => {
@@ -81,6 +124,15 @@ async function startServer() {
   };
 
   // --- API Routes ---
+
+  // File Upload
+  app.post("/api/upload", authenticate, upload.single("file"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ fileUrl, fileType: req.file.mimetype.startsWith('image') ? 'image' : 'pdf' });
+  });
 
   // Auth
   app.post("/api/auth/login", (req, res) => {
@@ -163,9 +215,9 @@ async function startServer() {
   });
 
   app.post("/api/materials", authenticate, (req, res) => {
-    const { courseId, title, fileType, fileUrl } = req.body;
-    const result = db.prepare("INSERT INTO materials (courseId, title, fileType, fileUrl) VALUES (?, ?, ?, ?)")
-      .run(courseId, title, fileType, fileUrl);
+    const { courseId, title, category, fileType, fileUrl } = req.body;
+    const result = db.prepare("INSERT INTO materials (courseId, title, category, fileType, fileUrl) VALUES (?, ?, ?, ?, ?)")
+      .run(courseId, title, category || 'Other', fileType, fileUrl);
     res.json({ id: result.lastInsertRowid });
   });
 

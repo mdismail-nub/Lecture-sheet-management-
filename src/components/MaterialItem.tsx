@@ -33,6 +33,11 @@ export default function MaterialItem({ material, onPreview }: MaterialItemProps)
             <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full border ${isPdf ? 'bg-red-50 border-red-100 text-red-700' : 'bg-navy-50 border-navy-100 text-navy-700'}`}>
               {material.fileType}
             </span>
+            {material.category && (
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full bg-gold-50 border border-gold-100 text-gold-700">
+                {material.category}
+              </span>
+            )}
             <div className="flex items-center space-x-2 text-navy-400 text-xs font-bold uppercase tracking-widest">
               <Calendar className="h-3.5 w-3.5" />
               <span>{date}</span>

@@ -138,14 +138,29 @@ export default function CourseDetail() {
               ))}
             </div>
           ) : materials.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {materials.map((material) => (
-                <MaterialItem 
-                  key={material.id} 
-                  material={material} 
-                  onPreview={setPreviewMaterial}
-                />
-              ))}
+            <div className="space-y-12">
+              {['Syllabus', 'Lecture Note', 'Assignment', 'Other'].map(category => {
+                const categoryMaterials = materials.filter(m => (m.category || 'Other') === category);
+                if (categoryMaterials.length === 0) return null;
+                
+                return (
+                  <div key={category} className="space-y-6">
+                    <div className="flex items-center space-x-4">
+                      <h3 className="text-xl font-display font-black text-navy-950">{category}s</h3>
+                      <div className="flex-grow h-px bg-navy-50"></div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-6">
+                      {categoryMaterials.map((material) => (
+                        <MaterialItem 
+                          key={material.id} 
+                          material={material} 
+                          onPreview={setPreviewMaterial}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-32 bg-paper border-2 border-dashed border-navy-50 rounded-[3rem]">

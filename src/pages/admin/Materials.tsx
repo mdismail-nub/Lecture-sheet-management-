@@ -12,11 +12,14 @@ export default function AdminMaterials() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
     fileUrl: "",
     fileType: "pdf",
+    category: "Lecture Note",
     courseId: ""
   });
 
@@ -43,26 +46,43 @@ export default function AdminMaterials() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsUploading(true);
     try {
+      let finalFileUrl = formData.fileUrl;
+      let finalFileType = formData.fileType;
+
+      if (selectedFile) {
+        const uploadRes = await api.materials.upload(selectedFile);
+        finalFileUrl = uploadRes.fileUrl;
+        finalFileType = uploadRes.fileType;
+      }
+
       if (editingMaterial) {
         await api.materials.update(editingMaterial.id, {
           ...formData,
+          fileUrl: finalFileUrl,
+          fileType: finalFileType as 'pdf' | 'image',
+          category: formData.category as 'Lecture Note' | 'Syllabus' | 'Assignment' | 'Other',
           courseId: parseInt(formData.courseId),
-          fileType: formData.fileType as 'pdf' | 'image'
         });
       } else {
         await api.materials.create({
           ...formData,
+          fileUrl: finalFileUrl,
+          fileType: finalFileType as 'pdf' | 'image',
+          category: formData.category as 'Lecture Note' | 'Syllabus' | 'Assignment' | 'Other',
           courseId: parseInt(formData.courseId),
-          fileType: formData.fileType as 'pdf' | 'image'
         });
       }
       setIsModalOpen(false);
       setEditingMaterial(null);
+      setSelectedFile(null);
       setFormData({ ...formData, title: "", fileUrl: "" });
       fetchData();
     } catch (error) {
       alert("Error saving material");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -72,8 +92,10 @@ export default function AdminMaterials() {
       title: material.title,
       fileUrl: material.fileUrl,
       fileType: material.fileType,
+      category: material.category || "Lecture Note",
       courseId: material.courseId.toString()
     });
+    setSelectedFile(null);
     setIsModalOpen(true);
   };
 
@@ -138,8 +160,8 @@ export default function AdminMaterials() {
               <tr className="text-[10px] text-navy-400 font-black uppercase tracking-[0.2em]">
                 <th className="px-10 py-6">Material Title</th>
                 <th className="px-10 py-6">Course</th>
+                <th className="px-10 py-6">Category</th>
                 <th className="px-10 py-6">Type</th>
-                <th className="px-10 py-6">Date</th>
                 <th className="px-10 py-6 text-right">Actions</th>
               </tr>
             </thead>
@@ -166,12 +188,12 @@ export default function AdminMaterials() {
                       </div>
                     </td>
                     <td className="px-10 py-8">
+                      <span className="text-xs text-navy-700 font-bold">{material.category}</span>
+                    </td>
+                    <td className="px-10 py-8">
                       <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${material.fileType === 'pdf' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-navy-50 border-navy-100 text-navy-700'}`}>
                         {material.fileType}
                       </span>
-                    </td>
-                    <td className="px-10 py-8">
-                      <span className="text-xs text-navy-400 font-bold">{new Date(material.uploadedAt).toLocaleDateString()}</span>
                     </td>
                     <td className="px-10 py-8 text-right">
                       <div className="flex items-center justify-end space-x-3">
@@ -275,51 +297,70 @@ export default function AdminMaterials() {
                   </div>
                   
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-navy-400 uppercase tracking-[0.2em] ml-2">File Type</label>
+                    <label className="text-[10px] font-black text-navy-400 uppercase tracking-[0.2em] ml-2">Category</label>
                     <div className="relative group/input">
                       <Hash className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-navy-400 group-focus-within/input:text-navy-950 transition-colors" />
                       <select
-                        value={formData.fileType}
-                        onChange={(e) => setFormData({...formData, fileType: e.target.value})}
+                        value={formData.category}
+                        onChange={(e) => setFormData({...formData, category: e.target.value})}
                         className="w-full pl-14 pr-6 py-4 bg-paper border-transparent focus:bg-white focus:border-navy-950 focus:ring-0 rounded-[1.5rem] text-sm font-bold transition-all shadow-inner appearance-none"
                       >
-                        <option value="pdf">PDF Document</option>
-                        <option value="image">Image / Slide</option>
+                        <option value="Lecture Note">Lecture Note</option>
+                        <option value="Syllabus">Syllabus</option>
+                        <option value="Assignment">Assignment</option>
+                        <option value="Other">Other</option>
                       </select>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-navy-400 uppercase tracking-[0.2em] ml-2">File URL / Reference</label>
+                  <label className="text-[10px] font-black text-navy-400 uppercase tracking-[0.2em] ml-2">Upload File</label>
                   <div className="relative group/input">
-                    <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-navy-400 group-focus-within/input:text-navy-950 transition-colors" />
+                    <Upload className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-navy-400 group-focus-within/input:text-navy-950 transition-colors" />
                     <input
-                      type="url"
-                      required
-                      placeholder="e.g. https://example.com/lecture1.pdf"
-                      value={formData.fileUrl}
-                      onChange={(e) => setFormData({...formData, fileUrl: e.target.value})}
-                      className="w-full pl-14 pr-6 py-4 bg-paper border-transparent focus:bg-white focus:border-navy-950 focus:ring-0 rounded-[1.5rem] text-sm font-bold transition-all shadow-inner"
+                      type="file"
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      className="w-full pl-14 pr-6 py-4 bg-paper border-transparent focus:bg-white focus:border-navy-950 focus:ring-0 rounded-[1.5rem] text-sm font-bold transition-all shadow-inner file:hidden cursor-pointer"
                     />
                   </div>
-                  <p className="text-[10px] text-navy-400 font-medium ml-2 italic">* For this prototype, please provide a direct link to the file.</p>
+                  {selectedFile && (
+                    <p className="text-[10px] text-gold-600 font-bold ml-2">Selected: {selectedFile.name}</p>
+                  )}
                 </div>
+
+                {!selectedFile && (
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-navy-400 uppercase tracking-[0.2em] ml-2">Or File URL / Reference</label>
+                    <div className="relative group/input">
+                      <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-navy-400 group-focus-within/input:text-navy-950 transition-colors" />
+                      <input
+                        type="url"
+                        placeholder="e.g. https://example.com/lecture1.pdf"
+                        value={formData.fileUrl}
+                        onChange={(e) => setFormData({...formData, fileUrl: e.target.value})}
+                        className="w-full pl-14 pr-6 py-4 bg-paper border-transparent focus:bg-white focus:border-navy-950 focus:ring-0 rounded-[1.5rem] text-sm font-bold transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-6 pt-6">
                   <button
                     type="button"
+                    disabled={isUploading}
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-grow py-5 bg-paper text-navy-500 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-navy-50 transition-all"
+                    className="flex-grow py-5 bg-paper text-navy-500 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-navy-50 transition-all disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-grow py-5 bg-navy-950 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-navy-800 transition-all shadow-2xl shadow-navy-950/20 flex items-center justify-center space-x-3 group/btn"
+                    disabled={isUploading}
+                    className="flex-grow py-5 bg-navy-950 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-navy-800 transition-all shadow-2xl shadow-navy-950/20 flex items-center justify-center space-x-3 group/btn disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span>{editingMaterial ? "Update Resource" : "Upload Resource"}</span>
-                    <ChevronRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                    <span>{isUploading ? "Uploading..." : (editingMaterial ? "Update Resource" : "Upload Resource")}</span>
+                    {!isUploading && <ChevronRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />}
                   </button>
                 </div>
               </form>
