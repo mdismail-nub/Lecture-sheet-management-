@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Space+Grotesk:wght@300..700&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
 @import "tailwindcss";
 
-@theme inline {
+@theme {
   --color-navy-50: #f0f4f8;
   --color-navy-100: #d9e2ec;
   --color-navy-200: #bcccdc;
