@@ -125,7 +125,7 @@ export default function Login() {
               <div className="flex items-center justify-center space-x-4">
                 <p className="text-xs font-black text-navy-950">admin@nub.ac.bd</p>
                 <div className="h-4 w-px bg-navy-100"></div>
-                <p className="text-xs font-black text-navy-950">password123</p>
+                <p className="text-xs font-black text-navy-950">admin123</p>
               </div>
             </div>
           </div>
