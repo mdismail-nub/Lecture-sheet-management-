@@ -367,42 +367,34 @@ async function startServer() {
     });
   }
 
-  return new Promise((resolve, reject) => {
-    const server = app.listen(PORT, "0.0.0.0", () => {
-      console.log(`[Server] Running on http://localhost:${PORT}`);
-      resolve(server);
-    });
-
-    server.on("error", (err: any) => {
-      if (err.code === "EADDRINUSE") {
-        console.log(`[Server] Port ${PORT} is in use, trying port ${PORT + 1}...`);
-        startServerOnPort(app, PORT + 1)
-          .then(resolve)
-          .catch(reject);
-      } else {
-        console.error("[Server] Fatal error:", err);
-        reject(err);
-      }
-    });
-  });
+  return tryListenOnPort(app, PORT);
 }
 
-function startServerOnPort(app: any, port: number): Promise<any> {
+function tryListenOnPort(app: any, port: number): Promise<any> {
   return new Promise((resolve, reject) => {
-    const server = app.listen(port, "0.0.0.0", () => {
+    const server = app.listen(port, "0.0.0.0");
+    let errorHandled = false;
+
+    server.once("listening", () => {
       console.log(`[Server] Running on http://localhost:${port}`);
+      errorHandled = true;
       resolve(server);
     });
 
-    server.on("error", (err: any) => {
+    server.once("error", (err: any) => {
+      if (errorHandled) return;
+      errorHandled = true;
+
       if (err.code === "EADDRINUSE") {
-        console.log(`[Server] Port ${port} is in use, trying port ${port + 1}...`);
-        startServerOnPort(app, port + 1)
-          .then(resolve)
-          .catch(reject);
+        console.log(`[Server] Port ${port} in use, trying ${port + 1}...`);
+        server.close(() => {
+          tryListenOnPort(app, port + 1)
+            .then(resolve)
+            .catch(reject);
+        });
       } else {
-        console.error("[Server] Fatal error:", err);
-        reject(err);
+        console.error("[Server] Bind error:", err.message);
+        server.close(() => reject(err));
       }
     });
   });
