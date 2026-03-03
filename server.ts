@@ -367,34 +367,44 @@ async function startServer() {
     });
   }
 
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[Server] Running on http://localhost:${PORT}`);
-  });
+  return new Promise((resolve, reject) => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[Server] Running on http://localhost:${PORT}`);
+      resolve(server);
+    });
 
-  server.on("error", (err: any) => {
-    if (err.code === "EADDRINUSE") {
-      console.log(`[Server] Port ${PORT} in use, trying ${PORT + 1}...`);
-      startServerOnPort(app, PORT + 1);
-    } else {
-      console.error("[Server] Error:", err);
-      throw err;
-    }
+    server.on("error", (err: any) => {
+      if (err.code === "EADDRINUSE") {
+        console.log(`[Server] Port ${PORT} is in use, trying port ${PORT + 1}...`);
+        startServerOnPort(app, PORT + 1)
+          .then(resolve)
+          .catch(reject);
+      } else {
+        console.error("[Server] Fatal error:", err);
+        reject(err);
+      }
+    });
   });
 }
 
-function startServerOnPort(app: any, port: number) {
-  const server = app.listen(port, "0.0.0.0", () => {
-    console.log(`[Server] Running on http://localhost:${port}`);
-  });
+function startServerOnPort(app: any, port: number): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, "0.0.0.0", () => {
+      console.log(`[Server] Running on http://localhost:${port}`);
+      resolve(server);
+    });
 
-  server.on("error", (err: any) => {
-    if (err.code === "EADDRINUSE") {
-      console.log(`[Server] Port ${port} in use, trying ${port + 1}...`);
-      startServerOnPort(app, port + 1);
-    } else {
-      console.error("[Server] Error:", err);
-      throw err;
-    }
+    server.on("error", (err: any) => {
+      if (err.code === "EADDRINUSE") {
+        console.log(`[Server] Port ${port} is in use, trying port ${port + 1}...`);
+        startServerOnPort(app, port + 1)
+          .then(resolve)
+          .catch(reject);
+      } else {
+        console.error("[Server] Fatal error:", err);
+        reject(err);
+      }
+    });
   });
 }
 
