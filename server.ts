@@ -65,7 +65,7 @@ if (courseCount.count === 0) {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || "3000", 10);
 
   app.use(express.json());
   app.use(cookieParser());
@@ -226,8 +226,32 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+  server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.log(`Port ${PORT} is in use. Trying port ${PORT + 1}...`);
+      startServerOnPort(app, PORT + 1);
+    } else {
+      throw err;
+    }
+  });
+}
+
+function startServerOnPort(app: any, port: number) {
+  const server = app.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
+
+  server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.log(`Port ${port} is in use. Trying port ${port + 1}...`);
+      startServerOnPort(app, port + 1);
+    } else {
+      throw err;
+    }
   });
 }
 
